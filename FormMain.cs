@@ -20,12 +20,16 @@ namespace CpuTime
             allowed_executables = new List<Regex>();
             allowed_executables.Add(new Regex("browser.exe"));
             allowed_executables.Add(new Regex("chrome.exe"));
+            allowed_executables.Add(new Regex("nacl64.exe"));
             string[] meaning_regex =
             {
                 "gpu", "--type=gpu-process",
-                "renderer", "--type=renderer",
+                "media", "--type=demuxer-process",
                 "plugin", "--type=plugin",
                 "utility", "--type=utility",
+                "nacl-broker", "--type=nacl-broker",
+                "nacl-loader", "--type=nacl-loader",
+                "renderer", "--type=renderer",
                 "main", "",
             };
             meanings = new List<MeaningAndFilter>();
@@ -54,7 +58,7 @@ namespace CpuTime
                 orderby p.ProcessName, p.Id
                 select p
                 ).ToList();
-            btnStop.Enabled = true;
+            SetEnabled();
             var sb = new StringBuilder();
             foreach (var p in processes)
             {
@@ -72,7 +76,7 @@ namespace CpuTime
         {
             stop_at = DateTime.Now;
             timer1.Stop();
-            btnStop.Enabled = false;
+            SetEnabled();
 
             var processes2 = QueryProcessInfo();
 
@@ -108,10 +112,12 @@ namespace CpuTime
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            var text = string.Format("Начали замер в {0:HH:mm:ss}, прошло {1:0.0} с", 
-                start_at, (DateTime.Now - start_at).TotalSeconds);
+            var time_spend = (DateTime.Now - start_at).TotalSeconds;
+            var text = string.Format("Начали замер в {0:HH:mm:ss}, прошло {1:0.0} с",
+                start_at, time_spend);
             lCurrentTime.Text = text;
-
+            if (udDelay.Value != 0 && time_spend >= (double)udDelay.Value)
+                btnStop_Click(btnStop, null);
         }
 
         private List<ProccessInfo> QueryProcessInfo()
@@ -214,7 +220,18 @@ namespace CpuTime
         private static List<Regex> allowed_executables;
         private static List<MeaningAndFilter> meanings;
 
-
-
+        void SetEnabled()
+        {
+            btnStop.Enabled = timer1.Enabled;
+            udDelay.Enabled = !timer1.Enabled;
+        }
+        private void udDelay_ValueChanged(object sender, EventArgs e)
+        {
+            SetEnabled();
+            if (udDelay.Value == 0)
+                btnStop.Text = "Стоп";
+            else
+                btnStop.Text = string.Format("Стоп {0} c.", udDelay.Value);
+        }
     }
 }

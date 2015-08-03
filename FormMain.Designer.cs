@@ -34,6 +34,8 @@
             this.lCurrentTime = new System.Windows.Forms.Label();
             this.textOutput = new System.Windows.Forms.TextBox();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
+            this.udDelay = new System.Windows.Forms.NumericUpDown();
+            ((System.ComponentModel.ISupportInitialize)(this.udDelay)).BeginInit();
             this.SuspendLayout();
             // 
             // btnStart
@@ -51,7 +53,7 @@
             this.btnStop.Enabled = false;
             this.btnStop.Location = new System.Drawing.Point(93, 12);
             this.btnStop.Name = "btnStop";
-            this.btnStop.Size = new System.Drawing.Size(75, 23);
+            this.btnStop.Size = new System.Drawing.Size(89, 23);
             this.btnStop.TabIndex = 1;
             this.btnStop.Text = "Стоп";
             this.btnStop.UseVisualStyleBackColor = true;
@@ -60,7 +62,7 @@
             // lCurrentTime
             // 
             this.lCurrentTime.AutoSize = true;
-            this.lCurrentTime.Location = new System.Drawing.Point(178, 17);
+            this.lCurrentTime.Location = new System.Drawing.Point(257, 17);
             this.lCurrentTime.Name = "lCurrentTime";
             this.lCurrentTime.Size = new System.Drawing.Size(35, 13);
             this.lCurrentTime.TabIndex = 2;
@@ -81,17 +83,33 @@
             // 
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
+            // udDelay
+            // 
+            this.udDelay.AccessibleDescription = "Сколько секунд мерить";
+            this.udDelay.Location = new System.Drawing.Point(188, 14);
+            this.udDelay.Maximum = new decimal(new int[] {
+            1000,
+            0,
+            0,
+            0});
+            this.udDelay.Name = "udDelay";
+            this.udDelay.Size = new System.Drawing.Size(63, 20);
+            this.udDelay.TabIndex = 5;
+            this.udDelay.ValueChanged += new System.EventHandler(this.udDelay_ValueChanged);
+            // 
             // FormMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(464, 262);
+            this.Controls.Add(this.udDelay);
             this.Controls.Add(this.textOutput);
             this.Controls.Add(this.lCurrentTime);
             this.Controls.Add(this.btnStop);
             this.Controls.Add(this.btnStart);
             this.Name = "FormMain";
             this.Text = "CPU Time";
+            ((System.ComponentModel.ISupportInitialize)(this.udDelay)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -104,6 +122,7 @@
         private System.Windows.Forms.Label lCurrentTime;
         private System.Windows.Forms.TextBox textOutput;
         private System.Windows.Forms.Timer timer1;
+        private System.Windows.Forms.NumericUpDown udDelay;
     }
 }
 
