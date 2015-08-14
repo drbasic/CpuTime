@@ -20,6 +20,7 @@ namespace CpuTime
             allowed_executables = new List<Regex>();
             allowed_executables.Add(new Regex("browser.exe"));
             allowed_executables.Add(new Regex("chrome.exe"));
+            allowed_executables.Add(new Regex("opera.exe"));
             allowed_executables.Add(new Regex("nacl64.exe"));
             string[] meaning_regex =
             {
