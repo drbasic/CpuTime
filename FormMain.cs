@@ -27,6 +27,7 @@ namespace CpuTime
                 "gpu", "--type=gpu-process",
                 "media", "--type=demuxer-process",
                 "plugin", "--type=plugin",
+                "plugin", "--type=ppapi",
                 "utility", "--type=utility",
                 "nacl-broker", "--type=nacl-broker",
                 "nacl-loader", "--type=nacl-loader",
@@ -96,8 +97,20 @@ namespace CpuTime
 
             var sb = new StringBuilder();
             var delta_time = (stop_at - start_at).TotalMilliseconds;
+            string prev_line_process_name = "";
+            double total_process_ms = 0.0;
             foreach (var p in join)
             {
+                if (prev_line_process_name != "" &&
+                    prev_line_process_name != p.ProcessName)
+                {
+                    sb.AppendFormat("Total [{0}] {1} мс", prev_line_process_name, (Int64)total_process_ms);
+                    sb.AppendLine();
+                    sb.AppendLine();
+                    total_process_ms = 0;
+                }
+                prev_line_process_name = p.ProcessName;
+                total_process_ms += p.TotalMilliseconds;
                 sb.AppendFormat(
                     "{2} {0} ({1}) {3} мс, {4:0.0}%",
                     p.ProcessName,
@@ -108,6 +121,7 @@ namespace CpuTime
                     );
                 sb.AppendLine();
             }
+            sb.AppendFormat("Total [{0}] {1} мс", prev_line_process_name, (Int64)total_process_ms);
             textOutput.Text = sb.ToString();
         }
 
