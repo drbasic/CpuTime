@@ -31,6 +31,7 @@ namespace CpuTime
                 "utility", "--type=utility",
                 "nacl-broker", "--type=nacl-broker",
                 "nacl-loader", "--type=nacl-loader",
+                "crashpad", "--type=crashpad-handler",
                 "renderer", "--type=renderer",
                 "main", "",
             };
