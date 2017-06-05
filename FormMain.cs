@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Management;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -61,6 +62,8 @@ namespace CpuTime
                 orderby p.ProcessName, p.Id
                 select p
                 ).ToList();
+            SaveMemoryUsage();
+            timerMemUsage.Start();
             SetEnabled();
             var sb = new StringBuilder();
             foreach (var p in processes)
@@ -79,10 +82,12 @@ namespace CpuTime
         {
             stop_at = DateTime.Now;
             timer1.Stop();
+            timerMemUsage.Stop();
             SetEnabled();
 
-            var processes2 = QueryProcessInfo();
+            SaveMemoryUsage();
 
+            var processes2 = QueryProcessInfo();
             var join = from p2 in processes2
                        from p1 in processes.Where(a => a.Id == p2.Id).DefaultIfEmpty()
                        orderby p2.ProcessName, p2.Id
@@ -93,7 +98,7 @@ namespace CpuTime
                            p2.Id,
                            p2.ProcessName,
                            Meaning,
-                           TotalMilliseconds = (p2.TotalProcessorTime - TotalProcessorTime1).TotalMilliseconds
+                           TotalMilliseconds = (p2.TotalProcessorTime - TotalProcessorTime1).TotalMilliseconds,
                        };
 
             var sb = new StringBuilder();
@@ -112,18 +117,63 @@ namespace CpuTime
                 }
                 prev_line_process_name = p.ProcessName;
                 total_process_ms += p.TotalMilliseconds;
+                MemoryInfo memoryInfo = GetMemoryUsage(p.Id);
+                string memUsageString = GetMemoryString(memoryInfo);
                 sb.AppendFormat(
-                    "{2} {0} ({1}) {3} мс, {4:0.0}%",
+                    "{2} {0} ({1}) {3} мс, {4:0.0}%, {5} ",
                     p.ProcessName,
                     p.Meaning,
                     p.Id,
                     (Int64)p.TotalMilliseconds,
-                    100 * p.TotalMilliseconds / delta_time
+                    100 * p.TotalMilliseconds / delta_time,
+                    memUsageString
                     );
                 sb.AppendLine();
             }
             sb.AppendFormat("Total [{0}] {1} мс", prev_line_process_name, (Int64)total_process_ms);
             textOutput.Text = sb.ToString();
+        }
+
+        private string GetMemoryString(MemoryInfo memoryInfo)
+        {
+            const double bytesPerMb = 1024 * 1024;
+            return string.Format("WorkingSet[{0:0.0};{1:0.0};{2:0.0};{3:0.0}], Private[{4:0.0};{5:0.0};{6:0.0};{7:0.0}]",
+                memoryInfo.WorkingSetSizeMin / bytesPerMb, 
+                memoryInfo.WorkingSetSizeMax / bytesPerMb, 
+                memoryInfo.WorkingSetSizeAvg / bytesPerMb,
+                memoryInfo.PeakWorkingSetSize/ bytesPerMb,
+
+                memoryInfo.PagefileUsageMin / bytesPerMb,
+                memoryInfo.PagefileUsageMax / bytesPerMb,
+                memoryInfo.PagefileUsageAvg / bytesPerMb,
+                memoryInfo.PeakPagefileUsage/ bytesPerMb
+                );
+        }
+
+        private MemoryInfo GetMemoryUsage(int id)
+        {
+            var filtered = (from mem in mem_usages
+                    where mem.Id == id
+                    select mem).ToArray();
+
+            if (filtered.Count() == 0)
+                return new MemoryInfo { };
+
+            return new MemoryInfo
+            {
+                Id = id,
+
+                WorkingSetSizeAvg = (ulong)filtered.Average(x => (double)x.WorkingSetSize),
+                WorkingSetSizeMin = filtered.Min(x => x.WorkingSetSize),
+                WorkingSetSizeMax = filtered.Max(x => x.WorkingSetSize),
+
+                PagefileUsageAvg = (ulong)filtered.Average(x => (double)x.PagefileUsage),
+                PagefileUsageMin = filtered.Min(x => x.PagefileUsage),
+                PagefileUsageMax = filtered.Max(x => x.PagefileUsage),
+
+                PeakPagefileUsage = filtered.Max(x => x.PeakPagefileUsage),
+                PeakWorkingSetSize = filtered.Max(x => x.PeakWorkingSetSize),
+            };
         }
 
         private void timer1_Tick(object sender, EventArgs e)
@@ -179,6 +229,7 @@ namespace CpuTime
                 {
                     IsValid = true,
                     Id = process.Id,
+                    Handle = process.Handle,
                     ProcessName = process.ProcessName,
                     FileName = process.MainModule.FileName,
                     TotalProcessorTime = process.TotalProcessorTime,
@@ -222,16 +273,41 @@ namespace CpuTime
             public bool IsValid { get; set; }
             public TimeSpan TotalProcessorTime { get; set; }
             public int Id { get; set; }
+            public IntPtr Handle { get; set; }
             public string ProcessName { get; set; }
             public string CommandLine { get; set; }
             public string FileName { get; set; }
 
             public string Meaning { get; set; }
         }
+        class MemoryInfoSample
+        {
+            public int Id { get; set; }
+            public ulong WorkingSetSize { get; set; }
+            public ulong PagefileUsage { get; set; }
+            public ulong PeakPagefileUsage { get; set; }
+            public ulong PeakWorkingSetSize { get; set; }
+        }
+        class MemoryInfo
+        {
+            public int Id { get; set; }
+
+            public ulong WorkingSetSizeMin { get; set; }
+            public ulong WorkingSetSizeMax { get; set; }
+            public ulong WorkingSetSizeAvg { get; set; }
+
+            public ulong PagefileUsageMin { get; set; }
+            public ulong PagefileUsageMax { get; set; }
+            public ulong PagefileUsageAvg { get; set; }
+
+            public ulong PeakPagefileUsage { get; set; }
+            public ulong PeakWorkingSetSize { get; set; }
+        }
 
         private DateTime start_at;
         private DateTime stop_at;
         private List<ProccessInfo> processes;
+        private List<MemoryInfoSample> mem_usages = new List<MemoryInfoSample>();
 
         private static List<Regex> allowed_executables;
         private static List<MeaningAndFilter> meanings;
@@ -248,6 +324,28 @@ namespace CpuTime
                 btnStop.Text = "Стоп";
             else
                 btnStop.Text = string.Format("Стоп {0} c.", udDelay.Value);
+        }
+
+        private void timerMemUsage_Tick(object sender, EventArgs e)
+        {
+            SaveMemoryUsage();
+        }
+
+        private void SaveMemoryUsage()
+        {
+            foreach (var p in processes)
+            {
+                WinApiHelpers.PROCESS_MEMORY_COUNTERS counters;
+                counters.cb = (uint)Marshal.SizeOf(typeof(WinApiHelpers.PROCESS_MEMORY_COUNTERS));
+                if (!WinApiHelpers.GetProcessMemoryInfo(p.Handle, out counters, counters.cb))
+                    continue;
+                MemoryInfoSample mem_info = new MemoryInfoSample { Id = p.Id };
+                mem_info.WorkingSetSize = counters.WorkingSetSize;
+                mem_info.PagefileUsage = counters.PagefileUsage;
+                mem_info.PeakPagefileUsage = counters.PeakPagefileUsage;
+                mem_info.PeakWorkingSetSize = counters.PeakWorkingSetSize;
+                mem_usages.Add(mem_info);
+            }
         }
     }
 }

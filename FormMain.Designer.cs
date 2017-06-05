@@ -35,6 +35,7 @@
             this.textOutput = new System.Windows.Forms.TextBox();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.udDelay = new System.Windows.Forms.NumericUpDown();
+            this.timerMemUsage = new System.Windows.Forms.Timer(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.udDelay)).BeginInit();
             this.SuspendLayout();
             // 
@@ -97,6 +98,10 @@
             this.udDelay.TabIndex = 5;
             this.udDelay.ValueChanged += new System.EventHandler(this.udDelay_ValueChanged);
             // 
+            // timerMemUsage
+            // 
+            this.timerMemUsage.Tick += new System.EventHandler(this.timerMemUsage_Tick);
+            // 
             // FormMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -123,6 +128,7 @@
         private System.Windows.Forms.TextBox textOutput;
         private System.Windows.Forms.Timer timer1;
         private System.Windows.Forms.NumericUpDown udDelay;
+        private System.Windows.Forms.Timer timerMemUsage;
     }
 }
 
