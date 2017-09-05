@@ -18,11 +18,17 @@ namespace CpuTime
     {
         static FormMain()
         {
+            allowed_process_name = new List<Regex>();
+            allowed_process_name.Add(new Regex("browser", RegexOptions.Compiled));
+            allowed_process_name.Add(new Regex("chrome", RegexOptions.Compiled));
+            allowed_process_name.Add(new Regex("opera", RegexOptions.Compiled));
+            allowed_process_name.Add(new Regex("nacl64", RegexOptions.Compiled));
+
             allowed_executables = new List<Regex>();
-            allowed_executables.Add(new Regex("browser.exe"));
-            allowed_executables.Add(new Regex("chrome.exe"));
-            allowed_executables.Add(new Regex("opera.exe"));
-            allowed_executables.Add(new Regex("nacl64.exe"));
+            allowed_executables.Add(new Regex("browser.exe", RegexOptions.Compiled));
+            allowed_executables.Add(new Regex("chrome.exe", RegexOptions.Compiled));
+            allowed_executables.Add(new Regex("opera.exe", RegexOptions.Compiled));
+            allowed_executables.Add(new Regex("nacl64.exe", RegexOptions.Compiled));
             string[] meaning_regex =
             {
                 "gpu", "--type=gpu-process",
@@ -58,8 +64,8 @@ namespace CpuTime
             start_at = DateTime.Now;
             timer1.Start();
             processes = (
-                from p in QueryProcessInfo()
-                orderby p.ProcessName, p.Id
+                from p in QueryProcessInfo(true)
+                orderby p.ProcessName, p.Meaning, p.Id
                 select p
                 ).ToList();
             SaveMemoryUsage();
@@ -87,12 +93,12 @@ namespace CpuTime
 
             SaveMemoryUsage();
 
-            var processes2 = QueryProcessInfo();
+            var processes2 = QueryProcessInfo(false);
             var join = from p2 in processes2
                        from p1 in processes.Where(a => a.Id == p2.Id).DefaultIfEmpty()
-                       orderby p2.ProcessName, p2.Id
                        let Meaning = (p1 == null) ? GetMeaning(GetCommandLine(p2.Id)) : p1.Meaning
                        let TotalProcessorTime1 = (p1 == null) ? new TimeSpan() : p1.TotalProcessorTime
+                       orderby p2.ProcessName, Meaning, p2.Id
                        select new
                        {
                            p2.Id,
@@ -186,7 +192,7 @@ namespace CpuTime
                 btnStop_Click(btnStop, null);
         }
 
-        private List<ProccessInfo> QueryProcessInfo()
+        private List<ProccessInfo> QueryProcessInfo(bool get_command_line)
         {
             var processes = Process.GetProcesses()
                .Where(a => FilterProcess(a))
@@ -195,8 +201,11 @@ namespace CpuTime
                .ToList();
             foreach(var p in processes)
             {
-                p.CommandLine = GetCommandLine(p.Id);
-                p.Meaning = GetMeaning(p.CommandLine);
+                if (get_command_line)
+                {
+                    p.CommandLine = GetCommandLine(p.Id);
+                    p.Meaning = GetMeaning(p.CommandLine);
+                }
             }
             return processes;
         }
@@ -204,9 +213,22 @@ namespace CpuTime
         {
             try
             {
+                var ProcessName = process.ProcessName;
+                bool process_name_match = false;
+                foreach (var f in allowed_process_name)
+                {
+                    if (f.IsMatch(ProcessName))
+                    {
+                        process_name_match = true;
+                        break;
+                    }
+                }
+                if (!process_name_match)
+                    return false;
+                var FileName = process.MainModule.FileName;
                 foreach (var f in allowed_executables)
                 {
-                    if (f.IsMatch(process.MainModule.FileName))
+                    if (f.IsMatch(FileName))
                         return true;
                 }
             }
@@ -309,6 +331,7 @@ namespace CpuTime
         private List<ProccessInfo> processes;
         private List<MemoryInfoSample> mem_usages = new List<MemoryInfoSample>();
 
+        private static List<Regex> allowed_process_name;
         private static List<Regex> allowed_executables;
         private static List<MeaningAndFilter> meanings;
 

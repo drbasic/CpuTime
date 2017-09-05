@@ -100,6 +100,7 @@
             // 
             // timerMemUsage
             // 
+            this.timerMemUsage.Interval = 500;
             this.timerMemUsage.Tick += new System.EventHandler(this.timerMemUsage_Tick);
             // 
             // FormMain
